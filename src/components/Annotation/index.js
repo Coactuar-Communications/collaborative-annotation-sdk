@@ -9,7 +9,9 @@ const Annotation = ({canvasRef, currentTool, canvasCtx, setCanvasCtx, width, hei
   const [currentPath, setCurrentPath] = useState([]); // Store current freehand path
   const [emojis, setEmojis] = useState([]); // Store emoji positions
   const [circles, setCircles] = useState([]); // Store circle data
+  const [rectangles, setRectangles] = useState([]); // Store rectangle data
   const [currentCircle, setCurrentCircle] = useState(null); // Store current circle being drawn
+  const [currentRect, setCurrentRect] = useState(null); // Store current rectangle being drawn
   const [textboxes, setTextboxes] = useState([]);
 
   useEffect(() => {
@@ -27,7 +29,7 @@ const Annotation = ({canvasRef, currentTool, canvasCtx, setCanvasCtx, width, hei
       canvas.height = height;
       // Clear the canvas and redraw existing annotations using the updated sizes
       context.clearRect(0, 0, canvas.width, canvas.height);
-      redraw(context, canvasRef, paths, circles, emojis, currentCircle, currentPath, otherProps); // Redraw existing drawings based on new size
+      redraw(context, canvasRef, paths, circles, rectangles, emojis, currentCircle, currentRect, currentPath, otherProps); // Redraw existing drawings based on new size
     };
 
     window.addEventListener('resize', handleResize);
@@ -36,7 +38,7 @@ const Annotation = ({canvasRef, currentTool, canvasCtx, setCanvasCtx, width, hei
     return () => {
       window.removeEventListener('resize', handleResize);
     };
-  }, [paths, emojis, circles, currentCircle, currentPath, textboxes]);
+  }, [paths, emojis, circles, rectangles, currentCircle, currentRect, currentPath, textboxes]);
   
   const startDrawing = (e) => {
     if(!otherProps.isModerator){
@@ -67,6 +69,34 @@ const Annotation = ({canvasRef, currentTool, canvasCtx, setCanvasCtx, width, hei
       //       ...(Array.isArray(prev) ? prev : []),
       //       {type: 'currentCircle', ctx: canvasCtx, circle: { x: centerXPercent, y: centerYPercent, radius: 0 }}]
       // )
+      setDrawing(true);
+    } else if (currentTool === ANNOTATION_TOOLS.rectangle) {
+      const canvas = canvasRef.current;
+      const centerXPercent = offsetX / canvas.width;
+      const centerYPercent = offsetY / canvas.height;
+      setCurrentRect({
+        x: centerXPercent,
+        y: centerYPercent,
+        radius: 0,
+        color: otherProps.lineColor,
+        width: otherProps.lineWidth,
+      });
+      if (channel) {
+        pushMessage(
+          JSON.stringify({
+            ctx: canvasCtx,
+            currentRect: {
+              x: centerXPercent,
+              y: centerYPercent,
+              radius: 0,
+              color: otherProps.lineColor,
+              width: otherProps.lineWidth,
+            },
+            props: otherProps,
+          }),
+          channel
+        );
+      }
       setDrawing(true);
     }
   };
@@ -101,6 +131,33 @@ const Annotation = ({canvasRef, currentTool, canvasCtx, setCanvasCtx, width, hei
       if(channel){
         pushMessage(JSON.stringify({ ctx: canvasCtx, currentCircle: { x: currentCircle?.x, y: currentCircle?.y, radius: radiusPercent, color: otherProps.lineColor, width: otherProps.lineWidth }, props: otherProps }), channel);
       }
+    } else if (currentTool === ANNOTATION_TOOLS.rectangle && drawing) {
+      const { offsetX, offsetY } = e.nativeEvent;
+      const canvas = canvasRef.current;
+      const radiusPercent = Math.sqrt(
+        Math.pow(offsetX / canvas.width - currentRect.x, 2) +
+          Math.pow(offsetY / canvas.height - currentRect.y, 2)
+      );
+      setCurrentRect((prevRect) => ({
+        ...prevRect,
+        radius: radiusPercent,
+      }));
+      if (channel) {
+        pushMessage(
+          JSON.stringify({
+            ctx: canvasCtx,
+            currentRect: {
+              x: currentRect?.x,
+              y: currentRect?.y,
+              radius: radiusPercent,
+              color: otherProps.lineColor,
+              width: otherProps.lineWidth,
+            },
+            props: otherProps,
+          }),
+          channel
+        );
+      }
     }
   };
 
@@ -122,6 +179,20 @@ const Annotation = ({canvasRef, currentTool, canvasCtx, setCanvasCtx, width, hei
         pushMessage(JSON.stringify({ ctx: canvasCtx, circle: currentCircle, props: otherProps }), channel);
       }
       setCurrentCircle(null); // Reset the current circle
+      setDrawing(false);
+    } else if (currentTool === ANNOTATION_TOOLS.rectangle && currentRect) {
+      setRectangles((prevRectangles) => [...prevRectangles, currentRect]);
+      if (channel) {
+        pushMessage(
+          JSON.stringify({
+            ctx: canvasCtx,
+            rectangle: currentRect,
+            props: otherProps,
+          }),
+          channel
+        );
+      }
+      setCurrentRect(null); // Reset the current rectangle
       setDrawing(false);
     }
   };

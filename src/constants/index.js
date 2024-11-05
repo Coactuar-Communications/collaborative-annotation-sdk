@@ -5,5 +5,6 @@ export const ANNOTATION_TOOLS = {
     pen: 'PEN',
     emoji: 'EMOJI',
     circle: 'CIRCLE',
+    rectangle: 'RECTANGLE',
     textbox: 'TEXTBOX'
 }

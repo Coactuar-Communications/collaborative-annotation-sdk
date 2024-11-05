@@ -37,6 +37,12 @@ export function useOnDraw(
           y: circle.y * scaleY,
           radius: circle.radius * Math.min(scaleX, scaleY),
         }));
+
+        const scaledRectangles = rectangles.map((rect) => ({
+          x: rect.x * scaleX,
+          y: rect.y * scaleY,
+          radius: rect.radius * Math.min(scaleX, scaleY),
+        }));
     
         const scaledEmojis = emojis.map((emoji) => ({
           ...emoji,
@@ -47,6 +53,7 @@ export function useOnDraw(
         setCanvasSize({ width: newWidth, height: newHeight });
         setPaths(scaledPaths);
         setCircles(scaledCircles);
+        setRectangles(scaledRectangles);
         setEmojis(scaledEmojis);
       };
 

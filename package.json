@@ -16,7 +16,7 @@
   "license": "MIT",
   "scripts": {
     "build": "webpack",
-    "prepublish": "rm -rf ./lib && npm run build"
+    "prepublish": "npm run build"
   },
   "author": "Gurudeep",
   "bugs": {

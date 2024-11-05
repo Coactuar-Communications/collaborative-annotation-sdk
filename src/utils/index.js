@@ -175,6 +175,17 @@ export function onDrawCircle ({ ctx, center, radius, props }) {
     }
 };
 
+export function onDrawRectangle({ ctx, center, radius, props }) {
+    if (!ctx) return;
+    if (center) {
+      ctx.beginPath();
+      ctx.arc(center.x, center.y, radius, 0, 2 * Math.PI);
+      ctx.strokeStyle = "#fff";
+      ctx.lineWidth = 2;
+      ctx.stroke();
+    }
+}
+
 export function computePointInCanvas(clientX, clientY, refCurrent){
     if(refCurrent){
         const boundingRect = refCurrent.getBoundingClientRect();
@@ -190,6 +201,13 @@ export function computePointInCanvas(clientX, clientY, refCurrent){
 export const calculateCircleRadius = (startPos, currentPos) => {
     return Math.sqrt(
         Math.pow(currentPos.x - startPos.x, 2) +
+        Math.pow(currentPos.y - startPos.y, 2)
+    );
+}
+
+export const calculateRectangleRadius = (startPos, currentPos) => {
+    return Math.sqrt(
+      Math.pow(currentPos.x - startPos.x, 2) +
         Math.pow(currentPos.y - startPos.y, 2)
     );
 }
@@ -265,6 +283,13 @@ export const redrawAnnotations = ({ctx, annotations, props}) => {
             onDrawEmoji(params);
         }else if(type === 'circle'){
             onDrawCircle({ ctx, center: annotation.center, radius: annotation.radius, props });
+        }else if(type === 'rectangle') {
+            onDrawRectangle({
+              ctx,
+              center: annotation.center,
+              radius: annotation.radius,
+              props,
+            });
         }else{
             return;
         }
@@ -304,7 +329,7 @@ export const stopAnnotation = (type, canvasCtx) => {
     }
 }
 
-export const redraw = (context, canvasRef, paths, circles, emojis, currentCircle, currentPath, props) => {
+export const redraw = (context, canvasRef, paths, circles, rectangles, emojis, currentCircle, currentRect, currentPath, props) => {
     if(!context && !(canvasRef && canvasRef?.current)) return;
     const canvas = canvasRef.current;
     context.clearRect(0, 0, canvas.width, canvas.height); // Clear the canvas
@@ -341,6 +366,20 @@ export const redraw = (context, canvasRef, paths, circles, emojis, currentCircle
             context.closePath();
         });
 
+        // Redraw rectangles
+        rectangles?.length &&
+          rectangles.forEach((rectangle) => {
+            const centerX = rectangle.x * canvas.width;
+            const centerY = rectangle.y * canvas.height;
+            const radius = rectangle.radius * canvas.width; // Using width scaling for simplicity
+            context.beginPath();
+            context.arc(centerX, centerY, radius, 0, Math.PI * 2);
+            context.strokeStyle = rectangle.color;
+            context.lineWidth = rectangle.width;
+            context.stroke();
+            context.closePath();
+          });
+
         // If currently drawing a circle, draw it
         
         if (currentCircle) {
@@ -353,6 +392,19 @@ export const redraw = (context, canvasRef, paths, circles, emojis, currentCircle
             context.lineWidth = currentCircle.width;
             context.stroke();
             context.closePath();
+        }
+
+        // if currently drawing a rectangle, draw it
+        if (currentRect) {
+          const centerX = currentRect.x * canvas.width;
+          const centerY = currentRect.y * canvas.height;
+          const radius = currentRect.radius * canvas.width;
+          context.beginPath();
+          context.arc(centerX, centerY, radius, 0, Math.PI * 2);
+          context.strokeStyle = currentRect.color;
+          context.lineWidth = currentRect.width;
+          context.stroke();
+          context.closePath();
         }
 
         if(currentPath?.length){

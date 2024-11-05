@@ -20,7 +20,9 @@ const App = (props)=> {
   const [paths, setPaths] = useState([]); // Store freehand paths
   const [emojis, setEmojis] = useState([]); // Store emoji positions
   const [circles, setCircles] = useState([]); // Store circle data
+  const [rectangles, setRectangles] = useState([]); // Store rectangle data
   const [currentCircle, setCurrentCircle] = useState(null); // Store current circle being drawn
+  const [currentRect, setCurrentRect] = useState(null); // Store current rectangle being drawn
   const roomName = props.roomName || getRoomName();
   const {users, dispatch} = useStore();
   const rtcChannel = CreateChannel(`rtc:${roomName}`, {});
@@ -58,11 +60,17 @@ const App = (props)=> {
     if(content && content.circle){
       setCircles(prev => ([...prev, content.circle]));
     }
+    if (content && content.rectangle) {
+      setRectangles((prev) => [...prev, content.rectangle]);
+    }
     if(content && content.emoji){
       setEmojis(prev => ([...prev, content.emoji]));
     }
     if(content && content.currentCircle){
       setCurrentCircle(content.currentCircle);
+    }
+    if(content && content.currentRect) {
+      setCurrentRect(content.currentRect)
     }
     if(content && content.textbox){
       setRemoteTextboxes(prev => ([...prev, content.textbox]));
@@ -71,25 +79,44 @@ const App = (props)=> {
   });
   
   useEffect(() => {
-    if(!canvasRef?.current){
+    if (!canvasRef?.current) {
       return;
     }
     const canvas = canvasRef?.current;
-    const context = canvas.getContext('2d');
+    const context = canvas.getContext("2d");
     const handleResize = () => {
       const canvas = canvasRef.current;
       canvas.width = props.width;
       canvas.height = props.height;
-        redraw(context, canvasRef, paths, circles, emojis, currentCircle, currentPath, props); // Redraw existing drawings based on new size
+      redraw(
+        context,
+        canvasRef,
+        paths,
+        circles,
+        rectangles,
+        emojis,
+        currentCircle,
+        currentRect,
+        currentPath,
+        props
+      ); // Redraw existing drawings based on new size
     };
 
-    window.addEventListener('resize', handleResize);
+    window.addEventListener("resize", handleResize);
     handleResize(); // Set initial canvas size
 
     return () => {
-      window.removeEventListener('resize', handleResize);
+      window.removeEventListener("resize", handleResize);
     };
-  }, [paths, emojis, circles, currentCircle, currentPath]);
+  }, [
+    paths,
+    emojis,
+    circles,
+    rectangles,
+    currentCircle,
+    currentRect, 
+    currentPath,
+  ]);
 
   const pushMessage = ( content, channel )=>{
     const new_message = {
