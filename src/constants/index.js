@@ -6,5 +6,7 @@ export const ANNOTATION_TOOLS = {
     emoji: 'EMOJI',
     circle: 'CIRCLE',
     rectangle: 'RECTANGLE',
+    line: 'LINE',
+    arrow: 'ARROW',
     textbox: 'TEXTBOX'
 }

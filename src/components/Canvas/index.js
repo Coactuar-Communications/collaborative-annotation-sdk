@@ -13,7 +13,7 @@ const Canvas = ({
     remoteTextboxes
   }) => {
     const {children, ...otherProps} = inputProps;
-    let currentTool = inputProps.annotationTool; // 'freehand', 'emoji', 'circle', 'rectangle'
+    let currentTool = inputProps.annotationTool; // 'freehand', 'emoji', 'circle'
  
     const canvasStyle={
       position: 'absolute', 

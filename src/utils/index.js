@@ -175,17 +175,6 @@ export function onDrawCircle ({ ctx, center, radius, props }) {
     }
 };
 
-export function onDrawRectangle({ ctx, center, radius, props }) {
-    if (!ctx) return;
-    if (center) {
-      ctx.beginPath();
-      ctx.arc(center.x, center.y, radius, 0, 2 * Math.PI);
-      ctx.strokeStyle = "#fff";
-      ctx.lineWidth = 2;
-      ctx.stroke();
-    }
-}
-
 export function computePointInCanvas(clientX, clientY, refCurrent){
     if(refCurrent){
         const boundingRect = refCurrent.getBoundingClientRect();
@@ -201,13 +190,6 @@ export function computePointInCanvas(clientX, clientY, refCurrent){
 export const calculateCircleRadius = (startPos, currentPos) => {
     return Math.sqrt(
         Math.pow(currentPos.x - startPos.x, 2) +
-        Math.pow(currentPos.y - startPos.y, 2)
-    );
-}
-
-export const calculateRectangleRadius = (startPos, currentPos) => {
-    return Math.sqrt(
-      Math.pow(currentPos.x - startPos.x, 2) +
         Math.pow(currentPos.y - startPos.y, 2)
     );
 }
@@ -283,14 +265,14 @@ export const redrawAnnotations = ({ctx, annotations, props}) => {
             onDrawEmoji(params);
         }else if(type === 'circle'){
             onDrawCircle({ ctx, center: annotation.center, radius: annotation.radius, props });
-        }else if(type === 'rectangle') {
-            onDrawRectangle({
+        }else if(type === 'rectangle'){
+            onDrawCircle({
               ctx,
               center: annotation.center,
               radius: annotation.radius,
               props,
             });
-        }else{
+        } else {
             return;
         }
     })
@@ -329,105 +311,183 @@ export const stopAnnotation = (type, canvasCtx) => {
     }
 }
 
-export const redraw = (context, canvasRef, paths, circles, rectangles, emojis, currentCircle, currentRect, currentPath, props) => {
-    if(!context && !(canvasRef && canvasRef?.current)) return;
-    const canvas = canvasRef.current;
-    context.clearRect(0, 0, canvas.width, canvas.height); // Clear the canvas
+const drawLines = (line, context, canvas, arrow = false) => {
+    const startX = line.x * canvas.width;
+    const startY = line.y * canvas.height;
+    const endX = line.endX * canvas.width;
+    const endY = line.endY * canvas.height;
+    context.beginPath();
+    context.moveTo(startX, startY);
+    context.lineTo(endX, endY);
+    context.strokeStyle = line.color;
+    context.lineWidth = line.lineWidth;
+    context.stroke();
+    context.closePath();
 
-        // Redraw freehand paths
-        paths?.length && paths.forEach((path) => {
-                const startX = path[0].x * canvas.width;
-                const startY = path[0].y * canvas.height;
-                context.beginPath();
-                context.moveTo(startX, startY);
+    if(!arrow) return;
 
-                path.forEach((point) => {
-                const x = point.x * canvas.width;
-                const y = point.y * canvas.height;
-                context.lineTo(x, y);
-                context.strokeStyle = point.color;
-                context.lineWidth = point.width;
-                });
+    // Draw arrowhead
+    const arrowLength = 15; // Length of the arrowhead lines
+    const angle = Math.atan2(endY - startY, endX - startX); // Angle of the line
 
-                context.stroke();
-                context.closePath();
-        });
+    // Calculate the points for the two lines of the arrowhead
+    const arrowX1 = endX - arrowLength * Math.cos(angle - Math.PI / 6);
+    const arrowY1 = endY - arrowLength * Math.sin(angle - Math.PI / 6);
+    const arrowX2 = endX - arrowLength * Math.cos(angle + Math.PI / 6);
+    const arrowY2 = endY - arrowLength * Math.sin(angle + Math.PI / 6);
 
-        // Redraw circles
-        circles?.length && circles.forEach((circle) => {
-            const centerX = circle.x * canvas.width;
-            const centerY = circle.y * canvas.height;
-            const radius = circle.radius * canvas.width; // Using width scaling for simplicity
-            context.beginPath();
-            context.arc(centerX, centerY, radius, 0, Math.PI * 2);
-            context.strokeStyle = circle.color;
-            context.lineWidth = circle.width;
-            context.stroke();
-            context.closePath();
-        });
+    // Draw the first side of the arrowhead
+    context.beginPath();
+    context.moveTo(endX, endY);
+    context.lineTo(arrowX1, arrowY1);
+    context.stroke();
+    context.closePath();
 
-        // Redraw rectangles
-        rectangles?.length &&
-          rectangles.forEach((rectangle) => {
-            const centerX = rectangle.x * canvas.width;
-            const centerY = rectangle.y * canvas.height;
-            const radius = rectangle.radius * canvas.width; // Using width scaling for simplicity
-            context.beginPath();
-            context.arc(centerX, centerY, radius, 0, Math.PI * 2);
-            context.strokeStyle = rectangle.color;
-            context.lineWidth = rectangle.width;
-            context.stroke();
-            context.closePath();
-          });
+    // Draw the second side of the arrowhead
+    context.beginPath();
+    context.moveTo(endX, endY);
+    context.lineTo(arrowX2, arrowY2);
+    context.stroke();
+    context.closePath();
+}
 
-        // If currently drawing a circle, draw it
-        
-        if (currentCircle) {
-            const centerX = currentCircle.x * canvas.width;
-            const centerY = currentCircle.y * canvas.height;
-            const radius = currentCircle.radius * canvas.width;
-            context.beginPath();
-            context.arc(centerX, centerY, radius, 0, Math.PI * 2);
-            context.strokeStyle = currentCircle.color;
-            context.lineWidth = currentCircle.width;
-            context.stroke();
-            context.closePath();
-        }
+export const redraw = (
+  context,
+  canvasRef,
+  paths,
+  circles,
+  emojis,
+  currentCircle,
+  currentPath,
+  rectangles,
+  currentRectangle,
+  lines,
+  currentLine,
+  arrows,
+  currentArrow,
+  props
+) => {
+  if (!context && !(canvasRef && canvasRef?.current)) return;
+  const canvas = canvasRef.current;
+  context.clearRect(0, 0, canvas.width, canvas.height); // Clear the canvas
 
-        // if currently drawing a rectangle, draw it
-        if (currentRect) {
-          const centerX = currentRect.x * canvas.width;
-          const centerY = currentRect.y * canvas.height;
-          const radius = currentRect.radius * canvas.width;
-          context.beginPath();
-          context.arc(centerX, centerY, radius, 0, Math.PI * 2);
-          context.strokeStyle = currentRect.color;
-          context.lineWidth = currentRect.width;
-          context.stroke();
-          context.closePath();
-        }
+  // Redraw freehand paths
+  paths?.length &&
+    paths.forEach((path) => {
+      const startX = path[0].x * canvas.width;
+      const startY = path[0].y * canvas.height;
+      context.beginPath();
+      context.moveTo(startX, startY);
 
-        if(currentPath?.length){
-            const startX = currentPath[0].x * canvas.width;
-            const startY = currentPath[0].y * canvas.height;
-            context.beginPath();
-            context.moveTo(startX, startY);
-            currentPath.forEach((path) => {
-                const x = path.x * canvas.width;
-                const y = path.y * canvas.height;
-                context.lineTo(x, y);
-                context.strokeStyle = path.color;
-                context.lineWidth = path.width;
-            });
-            context.stroke();
-            context.closePath();
-          }
+      path.forEach((point) => {
+        const x = point.x * canvas.width;
+        const y = point.y * canvas.height;
+        context.lineTo(x, y);
+        context.strokeStyle = point.color;
+        context.lineWidth = point.width;
+      });
 
-            // Redraw emojis
-        emojis?.length && emojis.forEach((emoji) => {
-                const x = emoji.x * canvas.width;
-                const y = emoji.y * canvas.height;
-                context.font = '20px Arial';
-                context.fillText(emoji.emoji, x-15,y+15);
-        });
-  };
+      context.stroke();
+      context.closePath();
+    });
+
+  // Redraw circles
+  circles?.length &&
+    circles.forEach((circle) => {
+      const centerX = circle.x * canvas.width;
+      const centerY = circle.y * canvas.height;
+      const radius = circle.radius * canvas.width; // Using width scaling for simplicity
+      context.beginPath();
+      context.arc(centerX, centerY, radius, 0, Math.PI * 2);
+      context.strokeStyle = circle.color;
+      context.lineWidth = circle.width;
+      context.stroke();
+      context.closePath();
+    });
+
+  // redraw rectangles
+  rectangles?.length &&
+    rectangles.forEach((rectangle) => {
+      const startX = rectangle.x * canvas.width;
+      const startY = rectangle.y * canvas.height;
+      const rectWidth = rectangle.width * canvas.width;
+      const rectHeight = rectangle.height * canvas.height;
+      context.beginPath();
+      context.rect(startX, startY, rectWidth, rectHeight);
+      context.strokeStyle = rectangle.color;
+      context.lineWidth = rectangle.lineWidth;
+      context.stroke();
+      context.closePath();
+    });
+
+  // redraw lines
+  lines?.length &&
+    lines.forEach((line) => {
+      drawLines(line, context, canvas, false)
+    });
+
+  // redraw arrows
+  arrows?.length &&
+    arrows.forEach((line) => {
+      drawLines(line, context, canvas, true);
+    });
+
+  // If currently drawing a circle, draw it
+  if (currentCircle) {
+    const centerX = currentCircle.x * canvas.width;
+    const centerY = currentCircle.y * canvas.height;
+    const radius = currentCircle.radius * canvas.width;
+    context.beginPath();
+    context.arc(centerX, centerY, radius, 0, Math.PI * 2);
+    context.strokeStyle = currentCircle.color;
+    context.lineWidth = currentCircle.width;
+    context.stroke();
+    context.closePath();
+  }
+
+  if (currentRectangle) {
+    const startX = currentRectangle.x * canvas.width;
+    const startY = currentRectangle.y * canvas.height;
+    const rectWidth = currentRectangle.width * canvas.width;
+    const rectHeight = currentRectangle.height * canvas.height;
+    context.beginPath();
+    context.rect(startX, startY, rectWidth, rectHeight);
+    context.strokeStyle = currentRectangle.color;
+    context.lineWidth = currentRectangle.lineWidth;
+    context.stroke();
+    context.closePath();
+  }
+
+  if (currentLine) {
+    drawLines(currentLine, context, canvas, false);
+  }
+
+  if(currentArrow) {
+    drawLines(currentArrow, context, canvas, true);
+  }
+
+  if (currentPath?.length) {
+    const startX = currentPath[0].x * canvas.width;
+    const startY = currentPath[0].y * canvas.height;
+    context.beginPath();
+    context.moveTo(startX, startY);
+    currentPath.forEach((path) => {
+      const x = path.x * canvas.width;
+      const y = path.y * canvas.height;
+      context.lineTo(x, y);
+      context.strokeStyle = path.color;
+      context.lineWidth = path.width;
+    });
+    context.stroke();
+    context.closePath();
+  }
+
+  // Redraw emojis
+  emojis?.length &&
+    emojis.forEach((emoji) => {
+      const x = emoji.x * canvas.width;
+      const y = emoji.y * canvas.height;
+      context.font = "20px Arial";
+      context.fillText(emoji.emoji, x - 15, y + 15);
+    });
+};
