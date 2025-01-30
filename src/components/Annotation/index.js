@@ -1,9 +1,21 @@
-import React, { useRef, useState, useEffect } from 'react';
-import { ANNOTATION_TOOLS } from '../../constants';
-import { getCanvasPosition, measureText, redraw } from '../../utils';
-import { makeStyles } from '@material-ui/core';
+import React, { useRef, useState, useEffect } from "react";
+import { ANNOTATION_TOOLS } from "../../constants";
+import { getCanvasPosition, measureText, redraw } from "../../utils";
+import { makeStyles } from "@material-ui/core";
 
-const Annotation = ({canvasRef, currentTool, canvasCtx, setCanvasCtx, width, height, zIndex, pushMessage, channel, otherProps, remoteTextboxes}) => {
+const Annotation = ({
+  canvasRef,
+  currentTool,
+  canvasCtx,
+  setCanvasCtx,
+  width,
+  height,
+  zIndex,
+  pushMessage,
+  channel,
+  otherProps,
+  remoteTextboxes,
+}) => {
   const [drawing, setDrawing] = useState(false);
   const [paths, setPaths] = useState([]); // Store freehand paths
   const [currentPath, setCurrentPath] = useState([]); // Store current freehand path
@@ -650,6 +662,8 @@ const Annotation = ({canvasRef, currentTool, canvasCtx, setCanvasCtx, width, hei
                 height: textbox.height + "px",
                 maxWidth: `${Math.min(200, 600 - textbox.x)}px`,
                 maxHeight: `${Math.min(96, 500 - textbox.y)}px`,
+                background: "transparent",
+                color: "yellow",
               }}
             />
           ))
